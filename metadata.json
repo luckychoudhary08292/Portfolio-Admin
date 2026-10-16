@@ -1,0 +1,6 @@
+{
+  "name": "Portfolio Admin Panel",
+  "description": "Full-Stack Admin Panel and Backend CRUD System for Software Engineering Portfolio with live MongoDB Atlas synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
