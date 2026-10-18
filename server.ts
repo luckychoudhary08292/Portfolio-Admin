@@ -19,7 +19,7 @@ import { POPULAR_TECH_SKILLS } from './src/server/seedSkills.ts';
 
 import jwt from 'jsonwebtoken';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,10 +27,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Admin Credentials from Environmental Variables (Never in Database)
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'luckypc08292@gmail.com').trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'its@Lucky.1').trim();
-const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-admin-super-secure-jwt-secret-2026';
+// Admin Credentials strictly from Environmental Variables (Never hardcoded in code)
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-secure-jwt-secret-key';
 
 export interface JwtUserPayload {
   role: 'admin' | 'guest';
@@ -120,6 +120,13 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       return;
     }
 
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      res.status(500).json({
+        error: 'Admin authentication is not configured in server environment variables (ADMIN_EMAIL, ADMIN_PASSWORD).',
+      });
+      return;
+    }
+
     const trimmedEmail = email.trim().toLowerCase();
     const targetEmail = ADMIN_EMAIL.toLowerCase();
 
@@ -127,7 +134,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       const adminPayload: JwtUserPayload = {
         role: 'admin',
         email: ADMIN_EMAIL,
-        name: 'Lucky Choudhary (Admin)',
+        name: 'Admin',
       };
       const token = jwt.sign(adminPayload, JWT_SECRET, { expiresIn: '7d' });
       res.json({
@@ -175,8 +182,22 @@ app.post('/api/reconnect', requireAdmin, async (req: Request, res: Response) => 
   }
 });
 
-app.get('/api/stats', async (_req: Request, res: Response) => {
+app.get('/api/stats', (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      (req as any).user = jwt.verify(token, JWT_SECRET) as JwtUserPayload;
+    } catch {
+      // invalid token, continue unauthenticated
+    }
+  }
+  next();
+}, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user as JwtUserPayload | undefined;
+    const isAdmin = Boolean(user && user.role === 'admin');
+
     const [
       certificateCount,
       projectCount,
@@ -192,8 +213,8 @@ app.get('/api/stats', async (_req: Request, res: Response) => {
       SkillCategory.countDocuments().catch(() => 0),
       SkillLibrary.countDocuments().catch(() => 0),
       Experience.countDocuments().catch(() => 0),
-      Inquiry.countDocuments().catch(() => 0),
-      Inquiry.countDocuments({ status: 'new' }).catch(() => 0),
+      isAdmin ? Inquiry.countDocuments().catch(() => 0) : Promise.resolve(2),
+      isAdmin ? Inquiry.countDocuments({ status: 'new' }).catch(() => 0) : Promise.resolve(1),
       Subscriber.countDocuments().catch(() => 0),
     ]);
 
@@ -846,8 +867,50 @@ app.delete('/api/experiences/:id', requireAdmin, async (req: Request, res: Respo
    6. INQUIRIES (/api/inquiries)
    ========================================================= */
 
-app.get('/api/inquiries', async (_req: Request, res: Response) => {
+const DEMO_GUEST_INQUIRIES = [
+  {
+    _id: 'guest-demo-inquiry-1',
+    name: 'Sarah Mitchell',
+    email: 'smitchell@apextech-recruiting.com',
+    company: 'Apex Innovations',
+    opportunityType: 'Full-Time Software Engineer',
+    message: 'Hello Lucky, our technical recruitment team came across your distributed systems projects and full-stack portfolio. We would love to schedule an introductory conversation regarding our core platform engineering team.',
+    status: 'new',
+    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+  {
+    _id: 'guest-demo-inquiry-2',
+    name: 'David Vance',
+    email: 'dvance@hypercloud.io',
+    company: 'HyperCloud Systems',
+    opportunityType: 'Contract / System Architecture',
+    message: 'Hi Lucky, reviewed your DevCollab real-time editor and containerized architecture. We are currently scaling our collaborative workspace microservices and would like to explore a consulting collaboration.',
+    status: 'read',
+    createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
+  },
+];
+
+app.get('/api/inquiries', (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token) {
+    try {
+      (req as any).user = jwt.verify(token, JWT_SECRET) as JwtUserPayload;
+    } catch {
+      // invalid token, continue unauthenticated
+    }
+  }
+  next();
+}, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user as JwtUserPayload | undefined;
+    // CRITICAL PRIVACY PROTECTION: Real client & recruiter communications are strictly
+    // accessible ONLY to the verified Admin. Guests & recruiters visiting see 2 showcase demo inquiries.
+    if (!user || user.role !== 'admin') {
+      res.json(DEMO_GUEST_INQUIRIES);
+      return;
+    }
+
     const inquiries = await Inquiry.find().sort({ createdAt: -1 });
     res.json(inquiries);
   } catch (err: any) {
@@ -944,7 +1007,7 @@ app.delete('/api/subscribers/:id', requireAdmin, async (req: Request, res: Respo
 /* =========================================================
    9. EXPORT / IMPORT & SEEDING UTILITIES
    ========================================================= */
-app.get('/api/export-all', async (_req: Request, res: Response) => {
+app.get('/api/export-all', requireAdmin, async (_req: Request, res: Response) => {
   try {
     const [certificates, projects, skills, skillLibrary, profile, experiences, inquiries, subscribers] =
       await Promise.all([

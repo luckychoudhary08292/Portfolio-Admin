@@ -8,6 +8,7 @@ import {
   Clock,
   Plus,
   X,
+  ShieldAlert,
 } from 'lucide-react';
 import { InquiryItem } from '../../types.ts';
 import { api } from '../../services/api.ts';
@@ -17,13 +18,43 @@ interface InquiriesViewProps {
   inquiries: InquiryItem[];
   onRefresh: () => void;
   onShowToast: (title: string, message?: string, type?: 'success' | 'error' | 'info') => void;
+  isGuest?: boolean;
 }
 
+const HARDCODED_GUEST_INQUIRIES: InquiryItem[] = [
+  {
+    _id: 'guest-showcase-inquiry-1',
+    name: 'Sarah Mitchell',
+    email: 'smitchell@apextech-recruiting.com',
+    company: 'Apex Innovations',
+    opportunityType: 'Full-Time Software Engineer',
+    message: 'Hello Lucky, our technical recruitment team came across your distributed systems projects and full-stack portfolio. We would love to schedule an introductory conversation regarding our core platform engineering team.',
+    status: 'new',
+    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+  {
+    _id: 'guest-showcase-inquiry-2',
+    name: 'David Vance',
+    email: 'dvance@hypercloud.io',
+    company: 'HyperCloud Systems',
+    opportunityType: 'Contract / System Architecture',
+    message: 'Hi Lucky, reviewed your DevCollab real-time editor and containerized architecture. We are currently scaling our collaborative workspace microservices and would like to explore a consulting collaboration.',
+    status: 'read',
+    createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
+  },
+];
+
 export const InquiriesView: React.FC<InquiriesViewProps> = ({
-  inquiries,
+  inquiries: rawInquiries,
   onRefresh,
   onShowToast,
+  isGuest,
 }) => {
+  const inquiries = isGuest
+    ? rawInquiries.length > 0
+      ? rawInquiries
+      : HARDCODED_GUEST_INQUIRIES
+    : rawInquiries;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'read' | 'replied' | 'archived'>('all');
   const [deleteTarget, setDeleteTarget] = useState<InquiryItem | null>(null);
@@ -40,6 +71,14 @@ export const InquiriesView: React.FC<InquiriesViewProps> = ({
 
   const handleUpdateStatus = async (item: InquiryItem, newStatus: 'new' | 'read' | 'replied' | 'archived') => {
     if (!item._id) return;
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Inquiry status updates are disabled in guest mode. Log in as Admin to manage messages.',
+        'info'
+      );
+      return;
+    }
     try {
       await api.updateInquiryStatus(item._id, newStatus);
       onShowToast('Status Updated', `Marked as "${newStatus}"`, 'info');
@@ -51,6 +90,15 @@ export const InquiriesView: React.FC<InquiriesViewProps> = ({
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget || !deleteTarget._id) return;
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Deleting inquiries is disabled in guest mode.',
+        'info'
+      );
+      setDeleteTarget(null);
+      return;
+    }
     try {
       setIsDeleting(true);
       await api.deleteInquiry(deleteTarget._id);
@@ -66,6 +114,15 @@ export const InquiriesView: React.FC<InquiriesViewProps> = ({
 
   const handleSendTestInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Sending test inquiries is disabled in guest mode.',
+        'info'
+      );
+      setIsTestModalOpen(false);
+      return;
+    }
     if (!testName || !testMessage) {
       onShowToast('Required Fields', 'Name and message are required', 'error');
       return;
@@ -121,17 +178,47 @@ export const InquiriesView: React.FC<InquiriesViewProps> = ({
               </span>
             )}
           </h2>
-          <div className="text-xs text-slate-700 mt-1 font-medium">{inquiries.length} total client messages & leads</div>
+          <div className="text-xs text-slate-700 mt-1 font-medium">
+            {isGuest ? '2 demonstration inquiries (Client data protected)' : `${inquiries.length} total client messages & leads`}
+          </div>
         </div>
 
         <button
-          onClick={() => setIsTestModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-semibold shadow-sm hover:shadow transition cursor-pointer"
+          onClick={() => {
+            if (isGuest) {
+              onShowToast('Guest Demo Mode', 'Adding inquiries is disabled in guest mode.', 'info');
+              return;
+            }
+            setIsTestModalOpen(true);
+          }}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
+            isGuest
+              ? 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+              : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white'
+          }`}
         >
           <Plus className="w-4 h-4" />
-          <span>New Inquiry</span>
+          <span>{isGuest ? 'New Inquiry (Demo)' : 'New Inquiry'}</span>
         </button>
       </div>
+
+      {/* Recruiter Privacy Showcase Banner */}
+      {isGuest && (
+        <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-950 flex items-start gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-amber-900">
+              Recruiter Demo Mode • 2 Hardcoded Showcase Inquiries
+            </p>
+            <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+              Real client messages contain confidential contact information and are strictly restricted to the Admin account. 
+              Below are 2 demonstration inquiries showing how incoming opportunities, status filters, and message reviews are handled.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filter and Search */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

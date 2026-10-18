@@ -18,6 +18,7 @@ interface DbSyncModalProps {
   dbStatus: DbStatusInfo | null;
   onRefreshStatus: () => void;
   onShowToast: (title: string, message?: string, type?: 'success' | 'error' | 'info') => void;
+  isGuest?: boolean;
 }
 
 export const DbSyncModal: React.FC<DbSyncModalProps> = ({
@@ -26,6 +27,7 @@ export const DbSyncModal: React.FC<DbSyncModalProps> = ({
   dbStatus,
   onRefreshStatus,
   onShowToast,
+  isGuest,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'schemas' | 'connect'>('overview');
@@ -44,6 +46,14 @@ export const DbSyncModal: React.FC<DbSyncModalProps> = ({
   };
 
   const handleReconnect = async () => {
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Database reconfiguration is disabled in guest mode. Log in as Admin to perform this action.',
+        'info'
+      );
+      return;
+    }
     try {
       setIsReconnecting(true);
       const res = await api.reconnect(customUri || undefined);
@@ -61,6 +71,14 @@ export const DbSyncModal: React.FC<DbSyncModalProps> = ({
   };
 
   const handleSeedSamples = async (force: boolean) => {
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Sample data seeding is disabled in guest mode. Log in as Admin to perform this action.',
+        'info'
+      );
+      return;
+    }
     try {
       setIsSeeding(true);
       const res = await api.seedSamples(force);
@@ -173,7 +191,7 @@ export const DbSyncModal: React.FC<DbSyncModalProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600 font-medium">Host</span>
-                  <span className="font-mono text-slate-900 truncate max-w-xs">{dbStatus?.host || 'cluster0.xqhmhxd.mongodb.net'}</span>
+                  <span className="font-mono text-slate-900 truncate max-w-xs">{dbStatus?.host || 'Remote MongoDB Cluster'}</span>
                 </div>
                 {dbStatus?.pingMs !== undefined && (
                   <div className="flex items-center justify-between">
@@ -272,9 +290,9 @@ export const DbSyncModal: React.FC<DbSyncModalProps> = ({
               </div>
 
               <div className="p-4 rounded-xl bg-[#f0f7ff] border border-sky-200 text-xs text-slate-700 space-y-1.5">
-                <div className="font-bold text-slate-950">Default URI Configured:</div>
+                <div className="font-bold text-slate-950">Active Connection URI:</div>
                 <div className="font-mono text-slate-700 truncate bg-white p-2 rounded-lg border border-sky-200/60">
-                  mongodb+srv://portfolio08292:portfolio136366@cluster0.xqhmhxd.mongodb.net/portfolio
+                  {dbStatus?.uriConfigured || 'Configured via server environment (MONGODB_URI)'}
                 </div>
               </div>
             </div>

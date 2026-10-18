@@ -9,7 +9,6 @@ import {
   Sparkles,
   LogIn,
   AlertCircle,
-  CheckCircle2,
 } from 'lucide-react';
 import { api } from '../services/api.ts';
 import { AuthUser } from '../types.ts';
@@ -20,12 +19,8 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
-  // Default values requested by user:
-  const DEFAULT_ADMIN_EMAIL = 'luckypc08292@gmail.com';
-  const DEFAULT_ADMIN_PASSWORD = 'its@Lucky.1';
-
-  const [email, setEmail] = useState(DEFAULT_ADMIN_EMAIL);
-  const [password, setPassword] = useState(DEFAULT_ADMIN_PASSWORD);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,7 +30,7 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
     setErrorMsg(null);
 
     if (!email.trim() || !password) {
-      setErrorMsg('Please enter both email and password.');
+      setErrorMsg('Please enter both admin email and password.');
       return;
     }
 
@@ -43,7 +38,7 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
       setIsLoading(true);
       const res = await api.login(email.trim(), password, false);
       if (res.success && res.user) {
-        showToast('Welcome back, Admin!', `Logged in as ${res.user.name}`, 'success');
+        showToast('Welcome back, Admin!', `Logged in successfully`, 'success');
         onLoginSuccess(res.user);
       }
     } catch (err: any) {
@@ -75,12 +70,6 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleResetToDefaultAdmin = () => {
-    setEmail(DEFAULT_ADMIN_EMAIL);
-    setPassword(DEFAULT_ADMIN_PASSWORD);
-    setErrorMsg(null);
   };
 
   return (
@@ -123,7 +112,7 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
               </div>
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">Admin & Demo Portal</h2>
               <p className="text-xs text-slate-600 mt-1">
-                Sign in with Admin credentials or continue as a Guest visitor to preview the live dashboard.
+                Sign in with Admin credentials or explore in Guest mode to preview the live dashboard.
               </p>
             </div>
 
@@ -154,7 +143,8 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="luckypc08292@gmail.com"
+                    autoComplete="email"
+                    placeholder="Enter your admin email"
                     className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-sky-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
                   />
                 </div>
@@ -162,18 +152,9 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
 
               {/* Password */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-800">
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleResetToDefaultAdmin}
-                    className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 hover:underline"
-                  >
-                    Reset to Default Admin
-                  </button>
-                </div>
+                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                  Password
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Lock className="w-4 h-4" />
@@ -183,29 +164,17 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="Enter admin password"
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
                     className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-sky-200 rounded-xl text-xs text-slate-900 font-medium placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </div>
-              </div>
-
-              {/* Default Credentials Notice */}
-              <div className="p-3 bg-sky-50/70 border border-sky-200/80 rounded-xl text-[11px] text-slate-700 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold text-slate-900">Default Admin Credentials</span>
-                  <div className="mt-0.5 font-mono text-[10.5px] text-slate-600 break-all">
-                    Email: <span className="font-semibold text-slate-800">luckypc08292@gmail.com</span>
-                    <br />
-                    Password: <span className="font-semibold text-slate-800">its@Lucky.1</span>
-                  </div>
                 </div>
               </div>
 
@@ -213,7 +182,7 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {isLoading ? (
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -240,7 +209,7 @@ export function LoginPage({ onLoginSuccess, showToast }: LoginPageProps) {
                 type="button"
                 onClick={handleGuestLogin}
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-300 rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 group"
+                className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-300 rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 group cursor-pointer"
               >
                 <UserCheck className="w-4 h-4 text-sky-600 group-hover:scale-110 transition-transform" />
                 <span>Enter as Guest (Read-Only Demo Mode)</span>

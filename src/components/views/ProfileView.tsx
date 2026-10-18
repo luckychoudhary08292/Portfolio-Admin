@@ -14,12 +14,14 @@ interface ProfileViewProps {
   initialProfile: ProfileData | null;
   onRefresh: () => void;
   onShowToast: (title: string, message?: string, type?: 'success' | 'error' | 'info') => void;
+  isGuest?: boolean;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   initialProfile,
   onRefresh,
   onShowToast,
+  isGuest,
 }) => {
   const [formData, setFormData] = useState<Partial<ProfileData>>({
     name: '',
@@ -61,6 +63,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGuest) {
+      onShowToast(
+        'Guest Demo Mode (Read-Only)',
+        'Saving changes is disabled in guest mode. Log in as Admin to edit your biography.',
+        'info'
+      );
+      return;
+    }
     try {
       setIsSaving(true);
       await api.updateProfile(formData);
@@ -87,10 +97,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-semibold shadow-sm shadow-orange-500/25 transition-all cursor-pointer disabled:opacity-50"
+          className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 ${
+            isGuest
+              ? 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+              : 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white shadow-orange-500/25'
+          }`}
+          title={isGuest ? 'Disabled in Guest Demo Mode' : 'Save Changes'}
         >
           <Save className="w-4 h-4" />
-          <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+          <span>{isSaving ? 'Saving...' : isGuest ? 'Save (Demo Mode)' : 'Save Changes'}</span>
         </button>
       </div>
 

@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-export const DEFAULT_MONGODB_URI =
-  process.env.MONGODB_URI ||
-  'mongodb+srv://portfolio08292:portfolio136366@cluster0.xqhmhxd.mongodb.net/portfolio?retryWrites=true&w=majority&appName=Cluster0';
+dotenv.config({ override: true });
+
+export const getMongoUri = () => process.env.MONGODB_URI || '';
 
 export interface DbStatus {
   status: 'connected' | 'disconnected' | 'connecting' | 'error';
@@ -14,13 +15,8 @@ export interface DbStatus {
   lastError?: string;
 }
 
-let connectionState: DbStatus = {
-  status: 'disconnected',
-  uriConfigured: maskUri(DEFAULT_MONGODB_URI),
-  databaseName: 'portfolio',
-};
-
-function maskUri(uri: string): string {
+function maskUri(uri?: string): string {
+  if (!uri) return 'Not configured (set MONGODB_URI)';
   try {
     return uri.replace(/:([^@]+)@/, ':*****@');
   } catch {
@@ -28,11 +24,28 @@ function maskUri(uri: string): string {
   }
 }
 
+let connectionState: DbStatus = {
+  status: 'disconnected',
+  uriConfigured: maskUri(getMongoUri()),
+  databaseName: 'portfolio',
+};
+
 export async function connectToDatabase(customUri?: string) {
-  const uriToUse = customUri || process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
+  const uriToUse = customUri || getMongoUri();
+
+  if (!uriToUse) {
+    connectionState = {
+      status: 'error',
+      uriConfigured: 'Not configured',
+      databaseName: 'portfolio',
+      lastError: 'MONGODB_URI environment variable is not defined. Please set MONGODB_URI in .env',
+    };
+    console.warn('[MongoDB] Cannot connect: MONGODB_URI environment variable is missing.');
+    return { success: false, error: 'MONGODB_URI environment variable is missing.' };
+  }
 
   try {
-    if (mongoose.connection.readyState === 1 && (!customUri || customUri === DEFAULT_MONGODB_URI)) {
+    if (mongoose.connection.readyState === 1 && (!customUri || customUri === getMongoUri())) {
       return { success: true, message: 'Already connected to MongoDB' };
     }
 

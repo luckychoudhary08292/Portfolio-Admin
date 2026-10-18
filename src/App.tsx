@@ -301,6 +301,7 @@ export default function App() {
                 initialProfile={profile}
                 onRefresh={loadAllData}
                 onShowToast={showToast}
+                isGuest={isGuest}
               />
             )}
 
@@ -318,6 +319,7 @@ export default function App() {
                 inquiries={inquiries}
                 onRefresh={loadAllData}
                 onShowToast={showToast}
+                isGuest={isGuest}
               />
             )}
           </div>
@@ -331,6 +333,7 @@ export default function App() {
         dbStatus={dbStatus}
         onRefreshStatus={loadAllData}
         onShowToast={showToast}
+        isGuest={isGuest}
       />
 
       {/* Toast notifications container */}
